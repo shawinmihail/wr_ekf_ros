@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package>
+  <name>wr_ekf_ros</name>
+  <version>0.1.1</version>
+  <description>wr_ekf_ros</description>
+  <author email="shawinmihail@gmail.com">shawinmihail</author>
+  <maintainer email="shawinmihail@gmail.com">shawinmihail</maintainer>
+  <license>commertial</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend>roslaunch</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+
+  <export></export>
+</package>
