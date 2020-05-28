@@ -12,10 +12,10 @@ class SREKF
 public:
 	SREKF();
 	void predictImu(const Vector3& aMes, const Vector3& wMes, float dt);
-	void correctZ(const Vector3& p, const Vector3& v, const Vector3& a);
 	void correctPv(const Vector6& pv);
 	void correctV(const Vector3& v);
 	void correctA(const Vector3& a);
+    void correctP3(const Vector3& dr1, const Vector3& dr2);
 	EkfStateVector getEstState();
 
 private:
@@ -24,11 +24,14 @@ private:
 	Eigen::Matrix<float, SREKF_STATE_DIM, SREKF_STATE_DIM> _sqrtP;
 
 	Eigen::Matrix<float, 6, 6> _sqrtR_pv;
+	Eigen::Matrix<float, 6, 6> _sqrtR_p3;
 	Eigen::Matrix<float, 3, 3> _sqrtR_v;
 	Eigen::Matrix<float, 3, 3> _sqrtR_a;
 	Eigen::Matrix<float, 12, 12> _sqrtR_z;
 
 	Vector3 _gpsAttachmentShift;
+    Vector3 _gpsSlave1;
+	Vector3 _gpsSlave2;
 
 	// constants
 	Eigen::Matrix<float, 3, 3> O33;
