@@ -4,7 +4,7 @@ project(wr_ekf_ros)
 add_definitions(-std=c++11)
 
 find_package(
-    catkin REQUIRED COMPONENTS roscpp std_msgs
+    catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs
 )
 
 # https://eigen.tuxfamily.org/dox/TopicCMakeGuide.html
@@ -19,6 +19,8 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} -std=c++11 -Wno-depr
 catkin_package(
     INCLUDE_DIRS
         include
+    CATKIN_DEPENDS
+        sensor_msgs
     DEPENDS
         ${EIGEN_PACKAGE}
 )
