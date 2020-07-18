@@ -4,16 +4,29 @@ project(wr_ekf_ros)
 add_definitions(-std=c++11)
 
 find_package(
-  catkin REQUIRED COMPONENTS
-  roscpp
-  std_msgs
+    catkin REQUIRED COMPONENTS roscpp std_msgs
 )
 
-catkin_package(INCLUDE_DIRS include eigen)
-include_directories(include eigen)
+# https://eigen.tuxfamily.org/dox/TopicCMakeGuide.html
+find_package (Eigen3 REQUIRED NO_MODULE)
+
+# GAZEBO
+
+set(PROTOBUF_IMPORT_DIRS "")
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} -std=c++11 -Wno-deprecated-declarations")
+
+catkin_package(
+    INCLUDE_DIRS
+        include
+    DEPENDS
+        ${EIGEN_PACKAGE}
+)
 
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+    include
+    ${catkin_INCLUDE_DIRS}
+    ${EIGEN3_INCLUDE_DIRS}
 )
 
 add_executable(wr_ekf src/run_wr_ekf_ros.cpp)
