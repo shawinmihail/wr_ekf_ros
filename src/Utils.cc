@@ -1,47 +1,47 @@
 #include "Utils.h"
 #include <math.h>
 
-const float UTILS_EPS = 1e-6f;
+const double UTILS_EPS = 1e-6f;
 
 Vector4 quatFromEul(const Vector3& eul)
 {
-	 float roll = eul[0];
-	 float pitch = eul[1];
-	 float yaw = eul[2];
+	 double roll = eul[0];
+	 double pitch = eul[1];
+	 double yaw = eul[2];
 
-	 float cy = cos(yaw * 0.5f);
-	 float sy = sin(yaw * 0.5f);
-	 float cr = cos(roll * 0.5f);
-	 float sr = sin(roll * 0.5f);
-	 float cp = cos(pitch * 0.5f);
-	 float sp = sin(pitch * 0.5f);
+	 double cy = cos(yaw * 0.5);
+	 double sy = sin(yaw * 0.5);
+	 double cr = cos(roll * 0.5);
+	 double sr = sin(roll * 0.5);
+	 double cp = cos(pitch * 0.5);
+	 double sp = sin(pitch * 0.5);
 
-	 float q0 = cy * cr * cp + sy * sr * sp;
-	 float q1 = cy * sr * cp - sy * cr * sp;
-	 float q2 = cy * cr * sp + sy * sr * cp;
-	 float q3 = sy * cr * cp - cy * sr * sp;
+	 double q0 = cy * cr * cp + sy * sr * sp;
+	 double q1 = cy * sr * cp - sy * cr * sp;
+	 double q2 = cy * cr * sp + sy * sr * cp;
+	 double q3 = sy * cr * cp - cy * sr * sp;
 
 	 return Vector4(q0, q1, q2 ,q3);
 }
 
 Vector3 quat2Eul(const Vector4& q)
 {
-    float sinr = 2.0f * (q[0] * q[1] + q[2] * q[3]);
-    float cosr = 1.0f - 2.0f * (q[1] * q[1] + q[2] * q[2]);
-    float roll = atan2(sinr, cosr);
+    double sinr = 2.0f * (q[0] * q[1] + q[2] * q[3]);
+    double cosr = 1.0f - 2.0f * (q[1] * q[1] + q[2] * q[2]);
+    double roll = atan2(sinr, cosr);
 
-    float sinp = 2.0f * (q[0] * q[2] - q[3] * q[1]);
-    float pitch = 0.f;
+    double sinp = 2.0 * (q[0] * q[2] - q[3] * q[1]);
+    double pitch = 0.;
     if (abs(sinp) >= 1) {
-        pitch = sinp / fabs (sinp) * 3.1415f / 2.f;
+        pitch = sinp / fabs (sinp) * 3.1415 / 2.0;
     }
     else {
         pitch = asin(sinp);
     }
 
-    float siny = 2.0f * (q[0] * q[3] + q[1] * q[2]);
-    float cosy = 1.0f - 2.0f * (q[2] * q[2] + q[3] * q[3]);
-    float yaw = atan2(siny, cosy);
+    double siny = 2.0 * (q[0] * q[3] + q[1] * q[2]);
+    double cosy = 1.0 - 2.0 * (q[2] * q[2] + q[3] * q[3]);
+    double yaw = atan2(siny, cosy);
     return Vector3(roll, pitch, yaw);
 }
 
@@ -49,24 +49,24 @@ Vector3 quatToQuatVec(const Vector4& q) // assume quat scalar part quat[0] > 0;
 {
 	Vector3 qv(q[1], q[2], q[3]);
 
-	if (q[0] < 0.0f)
+	if (q[0] < 0.0)
 	{
-		float sinHalfAlpha = qv.norm();
+		double sinHalfAlpha = qv.norm();
 		if (sinHalfAlpha < UTILS_EPS)
 		{
-			qv = Vector3(0.0f, 0.0f, 0.0f);
+			qv = Vector3(0.0, 0.0, 0.0);
 			return qv;
 		};
-		if (sinHalfAlpha > 1.0f)
+		if (sinHalfAlpha > 1.0)
 		{
-			sinHalfAlpha = 1.0f - UTILS_EPS; // garanteed for asin exists
+			sinHalfAlpha = 1.0 - UTILS_EPS; // garanteed for asin exists
 		}
 		qv = qv / sinHalfAlpha; // pin
-		float alpha = 2.0f * asin(sinHalfAlpha);
-		float pi = 3.1415f; // use WGS4 PI here;
-		float alphaNew = 2.0f * pi - alpha; // rotate to another dir
+		double alpha = 2.0 * asin(sinHalfAlpha);
+		double pi = 3.1415; // use WGS4 PI here;
+		double alphaNew = 2.0 * pi - alpha; // rotate to another dir
 
-		float sinHalfNewAlpha = sin(alphaNew / 2.0f);
+		double sinHalfNewAlpha = sin(alphaNew / 2.0);
 		qv = -qv * sinHalfNewAlpha;
 	}
 	return qv;
@@ -74,12 +74,12 @@ Vector3 quatToQuatVec(const Vector4& q) // assume quat scalar part quat[0] > 0;
 
 Vector4 quatVecToQuat(const Vector3& qv) // assume quat scalar part quat[0] > 0;
 {
-	float q0Square = 1 - qv[0] * qv[0] - qv[1] * qv[1] - qv[2] * qv[2];
-	if (q0Square < 0.0f) // possible in case of numerical integration error
+	double q0Square = 1 - qv[0] * qv[0] - qv[1] * qv[1] - qv[2] * qv[2];
+	if (q0Square < 0.0) // possible in case of numerical integration error
 	{
 		q0Square = UTILS_EPS;
 	} 
-	float q0 = sqrt(q0Square);
+	double q0 = sqrt(q0Square);
 
 	Vector4 q(q0, qv[0], qv[1], qv[2]);
 	q = q / q.norm();
@@ -114,35 +114,35 @@ Vector3 quatRotate(const Vector4& q, const Vector3& v)
 	return Vector3(qv2[1], qv2[2], qv2[3]);
 }
 
-Eigen::Matrix<float, 3, 3> quatToMatrix(const Vector4& q)
+Eigen::Matrix<double, 3, 3> quatToMatrix(const Vector4& q)
 {
-	float R11 = 1.f - 2.f * q(2) * q(2) - 2.f * q(3) * q(3);
-	float R12 = 2.f * q(1) * q(2) - 2.f * q(3) * q(0);
-	float R13 = 2.f * q(1) * q(3) + 2.f * q(2) * q(0);
+	double R11 = 1.0 - 2.0 * q(2) * q(2) - 2.0 * q(3) * q(3);
+	double R12 = 2.0 * q(1) * q(2) - 2.0 * q(3) * q(0);
+	double R13 = 2.0 * q(1) * q(3) + 2.0 * q(2) * q(0);
 
-	float R21 = 2.f * q(1) * q(2) + 2.f * q(3) * q(0);
-	float R22 = 1.f - 2.f * q(1) * q(1) - 2.f * q(3) * q(3);
-	float R23 = 2.f * q(2) * q(3) - 2.f * q(1) * q(0);
+	double R21 = 2.0 * q(1) * q(2) + 2.0 * q(3) * q(0);
+	double R22 = 1.0 - 2.0 * q(1) * q(1) - 2.0 * q(3) * q(3);
+	double R23 = 2.0 * q(2) * q(3) - 2.0 * q(1) * q(0);
 
-	float R31 = 2.f * q(1) * q(3) - 2.f * q(2) * q(0);
-	float R32 = 2.f * q(2) * q(3) + 2.f * q(1) * q(0);
-	float R33 = 1.f - 2.f * q(1) * q(1) - 2.f * q(2) * q(2);
+	double R31 = 2.0 * q(1) * q(3) - 2.0 * q(2) * q(0);
+	double R32 = 2.0 * q(2) * q(3) + 2.0 * q(1) * q(0);
+	double R33 = 1.0 - 2.0 * q(1) * q(1) - 2.0 * q(2) * q(2);
 
-	Eigen::Matrix<float, 3, 3> R;
+	Eigen::Matrix<double, 3, 3> R;
 	R << R11, R12, R13, R21, R22, R23, R31, R32, R33;
 	return R;
 }
 
-Eigen::Matrix<float, 3, 3> crossOperator(const Vector3& v)
+Eigen::Matrix<double, 3, 3> crossOperator(const Vector3& v)
 {
-	Eigen::Matrix<float, 3, 3> R;
-	R << 0.f, -v(2), v(1),
-		 v(2), 0.f, -v(0),
-		-v(1), v(0), 0.f;
+	Eigen::Matrix<double, 3, 3> R;
+	R << 0.0, -v(2), v(1),
+		 v(2), 0.0, -v(0),
+		-v(1), v(0), 0.0;
 	return R;
 }
 
-Eigen::Matrix<float, 3, 4> quatRotateLinearizationQ(const Vector4& q, const Vector3& v)
+Eigen::Matrix<double, 3, 4> quatRotateLinearizationQ(const Vector4& q, const Vector3& v)
 {
 	// f = q * v * q_dual
 	// res = df/dq
@@ -154,7 +154,7 @@ Eigen::Matrix<float, 3, 4> quatRotateLinearizationQ(const Vector4& q, const Vect
 	[2 * a2 * q2 - 2 * a1 * q3 + 2 * a3 * q1, 2 * a2 * q1 + 2 * a1 * q4 - 2 * a3 * q2, 2 * a2 * q4 - 2 * a1 * q1 - 2 * a3 * q3, 2 * a1 * q2 + 2 * a2 * q3 + 2 * a3 * q4]
 	*/
 
-	Eigen::Matrix<float, 3, 4> res;
+	Eigen::Matrix<double, 3, 4> res;
 	res << v(0) * q(0) - v(1) * q(3) + v(2) * q(2), v(0)* q(1) + (2) * v(1) * q(2) + v(2) * q(3), v(1)* q(1) - v(0) * q(2) + v(2) * q(0), v(2)* q(1) - v(0) * q(3) - v(1) * q(0),
 		   v(1) * q(0) + v(0) * q(3) - v(2) * q(1), v(0)* q(2) - (1) * v(1) * q(1) - v(2) * q(0), v(0)* q(1) + v(1) * q(2) + v(2) * q(3), v(0)* q(0) - v(1) * q(3) + v(2) * q(2),
 		   v(1) * q(1) - v(0) * q(2) + v(2) * q(0), v(1)* q(0) + (1) * v(0) * q(3) - v(2) * q(1), v(1)* q(3) - v(0) * q(0) - v(2) * q(2), v(0)* q(1) + v(1) * q(2) + v(2) * q(3);
@@ -162,7 +162,7 @@ Eigen::Matrix<float, 3, 4> quatRotateLinearizationQ(const Vector4& q, const Vect
 	return 2.f*res;
 }
 
-Eigen::Matrix<float, 4, 4> poissonEqLinearizationQ(const Vector3& w)
+Eigen::Matrix<double, 4, 4> poissonEqLinearizationQ(const Vector3& w)
 {
 	// f = 0.5 * q0 * qw0
 	// res = df/dq
@@ -175,16 +175,16 @@ Eigen::Matrix<float, 4, 4> poissonEqLinearizationQ(const Vector3& w)
 	[ w3/2,  w2/2, -w1/2,     0]
 	*/
 
-	Eigen::Matrix<float, 4, 4> res;
-	res << 0, -w(0) / 2.f, -w(1) / 2.f, -w(2) / 2.f,
-		  w(0) / 2.f, 0, w(2) / 2.f, -w(1) / 2.f,
-		  w(1) / 2.f, -w(2) / 2.f, 0, w(0) / 2.f,
-		  w(2) / 2.f, w(1) / 2.f, -w(0) / 2.f, 0;
+	Eigen::Matrix<double, 4, 4> res;
+	res << 0, -w(0) / 2.0, -w(1) / 2.0, -w(2) / 2.0,
+		  w(0) / 2.0, 0, w(2) / 2.0, -w(1) / 2.0,
+		  w(1) / 2.0, -w(2) / 2.0, 0, w(0) / 2.0,
+		  w(2) / 2.0, w(1) / 2.0, -w(0) / 2.0, 0;
 
 	return res;
 }
 
-Eigen::Matrix<float, 4, 3> poissonEqLinearizationW(const Vector4& q, const Vector3& w)
+Eigen::Matrix<double, 4, 3> poissonEqLinearizationW(const Vector4& q, const Vector3& w)
 {
 	// f = 0.5 * q0 * qw0
 	// res = df/dq
@@ -198,20 +198,66 @@ Eigen::Matrix<float, 4, 3> poissonEqLinearizationW(const Vector4& q, const Vecto
 	[ -q3/2,  q2/2,  q1/2]
 	*/
 
-	Eigen::Matrix<float, 4, 3> res;
-	res << -q(1) / 2.f, -q(2) / 2.f, -q(3) / 2.f,
-		    q(0) / 2.f, -q(3) / 2.f, q(2) / 2.f,
-			q(3) / 2.f, q(0) / 2.f, -q(1) / 2.f,
-			-q(2) / 2.f, q(1) / 2.f, q(0) / 2.f;
+	Eigen::Matrix<double, 4, 3> res;
+	res << -q(1) / 2.0, -q(2) / 2.0, -q(3) / 2.0,
+		    q(0) / 2.0, -q(3) / 2.0, q(2) / 2.0,
+			q(3) / 2.0, q(0) / 2.0, -q(1) / 2.0,
+			-q(2) / 2.0, q(1) / 2.0, q(0) / 2.0;
 
 	return res;
 }
 
-Eigen::Matrix<float, 1, 3> normVect3Linearization(const Vector3& v)
+Eigen::Matrix<double, 1, 3> normVect3Linearization(const Vector3& v)
 {
-	Eigen::Matrix<float, 1, 3> res;
-	float vn = v.norm();
+	Eigen::Matrix<double, 1, 3> res;
+	double vn = v.norm();
 	res << v(0) / vn, v(1) / vn, v(2) / vn;
 	return res;
+}
+
+void LLtoNE(double dLat, double dLon, double* NE)
+{
+  double PI = 3.14159265358979;
+  int zone = (int)dLon/6+1;
+
+  double a = 6378245.0;
+  double b = 6356863.019;
+  double e2 = (a*a-b*b)/(a*a);
+  double n = (a-b)/(a+b);
+
+  double F = 1.0;
+  double Lat0 = 0.0;
+  double Lon0 = (zone*6-3)*PI/180;
+  double N0 = 0.0;
+  double E0 = zone*1000000+500000.0;
+
+  double Lat = dLat*PI/180.0;
+  double Lon = dLon*PI/180.0;
+
+  double sinLat = sin(Lat);
+  double cosLat = cos(Lat);
+  double tanLat = tan(Lat);
+
+  double v = a*F*pow(1-e2*pow(sinLat,2),-0.5);
+  double p = a*F*(1-e2)*pow(1-e2*pow(sinLat,2),-1.5);
+  double n2 = v/p-1;
+  double M1 = (1+n+5.0/4.0*pow(n,2)+5.0/4.0*pow(n,3))*(Lat-Lat0);
+  double M2 = (3*n+3*pow(n,2)+21.0/8.0*pow(n,3))*sin(Lat - Lat0)*cos(Lat + Lat0);
+  double M3 = (15.0/8.0*pow(n,2)+15.0/8.0*pow(n,3))*sin(2*(Lat - Lat0))*cos(2*(Lat + Lat0));
+  double M4 = 35.0/24.0*pow(n,3)*sin(3*(Lat - Lat0))*cos(3*(Lat + Lat0));
+  double M = b*F*(M1-M2+M3-M4);
+  double I = M+N0;
+  double II = v/2 * sinLat * cosLat;
+  double III = v/24 * sinLat * pow(cosLat,3) * (5-pow(tanLat,2)+9*n2);
+  double IIIA = v/720 * sinLat * pow(cosLat,5) * (61-58*pow(tanLat,2)+pow(tanLat,4));
+  double IV = v * cosLat;
+  double V = v/6 * pow(cosLat,3) * (v/p-pow(tanLat,2));
+  double VI = v/120 * pow(cosLat,5) * (5-18*pow(tanLat,2)+pow(tanLat,4)+14*n2-58*pow(tanLat,2)*n2);
+
+  double N = I+II*pow(Lon-Lon0,2)+III*pow(Lon-Lon0,4)+IIIA*pow(Lon-Lon0,6);
+  double E = E0+IV*(Lon-Lon0)+V*pow(Lon-Lon0,3)+VI*pow(Lon-Lon0,5);
+
+  NE[0] = N;
+  NE[1] = E;
 }
 

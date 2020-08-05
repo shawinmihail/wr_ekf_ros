@@ -9,13 +9,6 @@ find_package(
   std_msgs
 )
 
-# GAZEBO
-
-set(PROTOBUF_IMPORT_DIRS "")
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${GAZEBO_CXX_FLAGS} -std=c++11 -Wno-deprecated-declarations")
-
-
 catkin_package(INCLUDE_DIRS include eigen)
 include_directories(include eigen)
 

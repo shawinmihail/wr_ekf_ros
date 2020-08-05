@@ -12,9 +12,10 @@
 #include "sensor_msgs/Imu.h"
 #include "sensor_msgs/NavSatFix.h"
 #include "geometry_msgs/Vector3Stamped.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/TwistStamped.h"
 #include "std_msgs/Float32MultiArray.h"
-#include "gazebo_msgs/ModelStates.h"
-#include "gazebo_msgs/LinkStates.h"
+#include "nav_msgs/Odometry.h"
 
 #include "Definitions.h"
 #include "SREKF.h"
@@ -79,23 +80,6 @@ private:
     std::string  estStatePubTopicName;
     std::string  ctrlStatePubTopicName;
     
-
-/* GAZEBO STATE*/
-private:
-    std::string  modelStateTopicName;
-    ros::Subscriber modelStateSub;
-    void modelStateCb(const gazebo_msgs::ModelStates& msg);
-    EkfStateVector modelState;
-    bool modelStateReady;
-    
-    std::string  linkStateTopicName;
-    ros::Subscriber linkStateSub;
-    void linkStateCb(const gazebo_msgs::LinkStates& msg);
-    bool linkStateReady;
-    Vector3 linkBasePos;
-    Vector3 linkBaseVel;
-    Vector3 linkLeftPos;
-    Vector3 linkRightPos;
     
 /* noise */
 private:
@@ -122,15 +106,3 @@ private:
     std::chrono::high_resolution_clock::time_point gnnsCorrectionTimePoint;
     EkfStateVector estState;
 };
-
-/*
-#include "std_msgs/Float32MultiArray.h"
-void ctrlStateCb(const std_msgs::Float32MultiArray msg){
-    float x = msg.data.at(0);
-    float y = msg.data.at(1);
-    float vx = msg.data.at(2);
-    float vy = msg.data.at(3);
-    float yaw = msg.data.at(4);
-
-}
-*/
