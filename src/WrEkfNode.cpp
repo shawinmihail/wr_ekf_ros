@@ -93,11 +93,13 @@ void WrEkfNode::pubEstState()
 {
     EkfStateVector state = srekf.getEstState();
     
+    /*
     std::cout << "r:\n" << state.segment(0,3) << std::endl;
     std::cout << "v:\n" << state.segment(3,3) << std::endl;
     std::cout << "a:\n" << state.segment(6,3) << std::endl;
     std::cout << "q:\n" << state.segment(9,4) << std::endl;
     std::cout << "w:\n" << state.segment(13,3) << std::endl;
+    */
     
     nav_msgs::Odometry msg;
     msg.pose.pose.position.x = state[0];
