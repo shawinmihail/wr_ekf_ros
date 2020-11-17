@@ -2,6 +2,7 @@
 /*/
 !src/
 !include/
+!wr_c_ekf/
 !package.xml
 !CMakeLists.txt
 !.gitignore

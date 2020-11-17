@@ -1,0 +1,6 @@
+[submodule "wr_c_ekf"]
+	path = wr_c_ekf
+	url = https://github.com/shawinmihail/wr_c_ekf.git
+[submodule "mshw_geo"]
+	path = mshw_geo
+	url = https://github.com/shawinmihail/mshw_geo.git

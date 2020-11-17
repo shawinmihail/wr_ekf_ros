@@ -16,9 +16,13 @@
 #include "geometry_msgs/TwistStamped.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "nav_msgs/Odometry.h"
+#include "wr_msgs/ninelives_triplet_stamped.h"
+#include "wr_msgs/imu_stamped.h"
+
 
 #include "Definitions.h"
-#include "SREKF.h"
+#include "EKF4.h"
+#include "mshw_geolib.h"
 
 class WrEkfNode
 {
@@ -33,76 +37,55 @@ private:
     void estimate();
     void pubEstState();
     void pubCtrlState();
+    void pubTest();
     
 private:
-    void imuCb(const sensor_msgs::Imu& msg);
+    void imuCb(const wr_msgs::imu_stamped& msg);
     bool imuReady;
     
-    void gnnsBasePosCb(const sensor_msgs::NavSatFix& msg);
-    bool gnnsBasePosReady;
+    void gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg);
+    bool gnnsTripletReady;
     
-    void gnnsBaseVelCb(const geometry_msgs::Vector3Stamped& msg);
-    bool gnnsBaseVelReady;
-    
-    void gnnsLeftPosCb(const sensor_msgs::NavSatFix& msg);
-    bool gnnsLeftPosReady;
-    
-    void gnnsRightPosCb(const sensor_msgs::NavSatFix& msg);
-    bool gnnsRightPosReady;
-
 private:
     ros::NodeHandle nodeHandle;
-    
     ros::Subscriber imuSub;
-    ros::Subscriber gnnsBasePosSub;
-    ros::Subscriber gnnsBaseVelSub;
-    ros::Subscriber gnnsLeftPosSub;
-    //ros::Subscriber gnnsLeftVelSub;
-    ros::Subscriber gnnsRightPosSub;
-    //ros::Subscriber gnnsRightVelSub;
-    
+    ros::Subscriber gnnsTripletSub;
     ros::Publisher estStatePub;
     ros::Publisher ctrlStatePub;
-    
     int wrEkfQuenueDepth;
-
     ros::Rate wrEkfNodeRate;
+    
+    ros::Publisher testMesTripletSub;
+    ros::Publisher testEstTripletSub;
     
 private:
     std::string  imuTopicName;
-    std::string  gnnsBasePosTopicName;
-    std::string  gnnsBaseVelTopicName;
-    std::string  gnnsLeftPosTopicName;
-    //std::string  gnnsLeftVelTopicName;
-    std::string  gnnsRightPosTopicName;
-    //std::string  gnnsRightVelTopicName;
-    
+    std::string  gnnsTripletTopicName;
     std::string  estStatePubTopicName;
     std::string  ctrlStatePubTopicName;
     
-    
-/* noise */
-private:
-    std::default_random_engine random_generator;
-    std::normal_distribution<double> normal_distribution;
-    
+        
 private:
     Vector3 gnnsBasePosEnuMes;
-    Vector3 gnnsLeftPosEnuMes;
-    Vector3 gnnsRightPosEnuMes;
-    
     Vector3 gnnsBaseVelEnuMes;
+    Vector3 gnnsSlave1PosEnuMes;
+    Vector3 gnnsSlave2PosEnuMes;
+    int statusBase;
+    int statusSlave1;
+    int statusSlave2;
     
     Vector3 imuAmes;
     Vector3 imuWmes;
     
 private:
-    Vector3 refWgsPoint;
-    bool refWgsPointInited;
+    mswhgeo::Geo geo;
+    bool refGeoInited;
+    Vector3 refLatLonAlt;
+    Vector3 refEcefXYZ;
         
 private:
-    SREKF srekf;
+    EKF4 ekf;
     std::chrono::high_resolution_clock::time_point predictionTimePoint;
     std::chrono::high_resolution_clock::time_point gnnsCorrectionTimePoint;
-    EkfStateVector estState;
+    Ekf4_fullState estState;
 };

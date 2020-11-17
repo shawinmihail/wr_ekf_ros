@@ -27,13 +27,25 @@ catkin_package(
 
 include_directories(
     include
+    wr_c_ekf
+    mshw_geo/include
     ${catkin_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
 )
 
-add_executable(wr_ekf src/run_wr_ekf_ros.cpp)
-add_library(wr_ekf_lib src/WrEkfNode.cpp src/SREKF.cpp src/Utils.cc)
+add_library(wr_c_ekf wr_c_ekf/EKF4.cpp wr_c_ekf/MatlabDataParser.cpp wr_c_ekf/Utils.cc)
+add_library(wr_ekf_node_lib src/WrEkfNode.cpp)
+add_executable(wr_ekf_node src/run_wr_ekf_ros.cpp)
 
-target_link_libraries(
-    wr_ekf wr_ekf_lib ${catkin_LIBRARIES}
-)
+target_link_libraries(wr_ekf_node wr_ekf_node_lib wr_c_ekf ${catkin_LIBRARIES})
+
+install(TARGETS wr_ekf_node
+        ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+        RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+        
+install(DIRECTORY launch/
+DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch)
+
+install(DIRECTORY config/
+DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config)

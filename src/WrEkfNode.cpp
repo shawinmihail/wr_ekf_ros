@@ -3,39 +3,45 @@
 #include <cmath>
 
 WrEkfNode::WrEkfNode():
-     imuTopicName("/imu/data")
-    ,gnnsBasePosTopicName("/gnss_base/fix")
-    ,gnnsBaseVelTopicName("/gnss_base/vel")
-    ,gnnsLeftPosTopicName("/gnss_left/fix")
-    //,gnnsLeftVelTopicName("/gnss_left/vel")
-    ,gnnsRightPosTopicName("/gnss_right/fix")
-    //,gnnsRightVelTopicName("/gnss_right/vel")
+     imuTopicName("kin_model/imu")
+    ,gnnsTripletTopicName("kin_model/gnns_triplet")
     ,estStatePubTopicName("/wr_ekf/est_state")
     ,ctrlStatePubTopicName("/wr_ekf/ctrl_state")
-    ,refWgsPointInited(false)
-    ,wrEkfNodeRate(200)
+    ,wrEkfNodeRate(100)
     ,wrEkfQuenueDepth(1)
     ,predictionTimePoint(std::chrono::high_resolution_clock::now())
     ,gnnsCorrectionTimePoint(std::chrono::high_resolution_clock::now())
+    
     ,imuReady(false)
-    ,gnnsBasePosReady(false)
-    ,gnnsBaseVelReady(false)
-    ,gnnsLeftPosReady(false)
-    ,gnnsRightPosReady(false)
-    ,normal_distribution(0.0, 1.0)
+    ,gnnsTripletReady(false)
+    ,statusBase(0)
+    ,statusSlave1(0)
+    ,statusSlave2(0)
+    
+    ,geo(mswhgeo_constants::WGS84)
+    ,refGeoInited(false)
 {
-// //
+    /* init ref */
+    if (!refGeoInited)
+    {
+        refLatLonAlt = Vector3(55.751244 * 3.1415 / 180.0, 37.618423 * 3.1415 / 180.0, 200);
+        double x = 0, y = 0, z = 0;
+        geo.Wgs2Ecef(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], x, y, z);
+        refEcefXYZ = Vector3(x,y,z);
+        refGeoInited = true;    
+    }
 }
 
 void WrEkfNode::run()
 {
-    std::cout.precision(4);
+    //std::cout.precision(4);
     subscribe();
     initPubs();
     while(ros::ok)
     {
         estimate();
         pubEstState();
+        pubCtrlState();
         ros::spinOnce();
         wrEkfNodeRate.sleep();
     }
@@ -43,83 +49,68 @@ void WrEkfNode::run()
 
 void WrEkfNode::estimate()
 {
-    /* predict */
+    /* time */
+    uint64_t dtMs =  std::chrono::duration_cast<std::chrono::milliseconds>
+    (std::chrono::high_resolution_clock::now() - predictionTimePoint).count();
+    predictionTimePoint = std::chrono::high_resolution_clock::now();
+    double dt = dtMs / 1e3f;
+    
+    ekf.predict(dt);
     if (imuReady)
     {
-        uint64_t dtMs =  std::chrono::duration_cast<std::chrono::milliseconds>
-        (std::chrono::high_resolution_clock::now() - predictionTimePoint).count();
-        predictionTimePoint = std::chrono::high_resolution_clock::now();
-        double dt = dtMs / 1e3f;
-        
-        srekf.predictImu(imuAmes, imuWmes, dt);
+        ekf.setImu(imuAmes, imuWmes);
         imuReady = false;
     }
 
-    /*husky gnns corrections*/
-    if (gnnsBasePosReady && gnnsBaseVelReady)
+    /* gnns corrections */
+    if (gnnsTripletReady)
     {
-        predictionTimePoint = std::chrono::high_resolution_clock::now();
+        // rv
+        if (statusBase == 4)
+        {
+            ekf.correctRV(gnnsBasePosEnuMes, gnnsBaseVelEnuMes);
+        }
         
-        // pv
-        Vector6 pv;
-        pv << gnnsBasePosEnuMes, gnnsBaseVelEnuMes;
-        srekf.correctPv(pv);
-        
-        // v
-        srekf.correctV(gnnsBaseVelEnuMes);
+        //if (statusBase == 4)
+        //{
+        // u
+        //ekf.correctU(gnnsBaseVelEnuMes);
+        //}
         
         // q
-        
-        Vector3 dr1 = gnnsLeftPosEnuMes - gnnsBasePosEnuMes;
-        Vector3 dr2 = gnnsRightPosEnuMes - gnnsBasePosEnuMes;
-        
-        /*
-        std::cout << "gnnsBasePosEnuMes:\n" << gnnsBasePosEnuMes << std::endl;
-        std::cout << "gnnsLeftPosEnuMes:\n" << gnnsLeftPosEnuMes << std::endl;
-        std::cout << "gnnsRightPosEnuMes:\n" << gnnsRightPosEnuMes << std::endl;
-        std::cout << "dr1:\n" << dr1 << std::endl;
-        std::cout << "dr2:\n" << dr2 << std::endl;
-        */
-        
-        
-        srekf.correctP3(dr1, dr2);
-        
-        gnnsBasePosReady = false;
-        gnnsBaseVelReady = false;
+        if (statusSlave1 == 4 & statusSlave2 == 4)
+        {
+        ekf.correctQ2(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
+        gnnsTripletReady = false;
+        }
     }
+    
+    estState = ekf.getEstState();
+    pubTest();
+    
+    /*
+    std::cout << "r_e:\n" << estState.segment(0,3) << std::endl;
+    std::cout << "r_m:\n" << gnnsBasePosEnuMes.segment(0,3) << std::endl;
+    std::cout << std::endl;
+    */
 }
 
 void WrEkfNode::pubEstState()
-{
-    EkfStateVector state = srekf.getEstState();
-    
-    /*
-    std::cout << "r:\n" << state.segment(0,3) << std::endl;
-    std::cout << "v:\n" << state.segment(3,3) << std::endl;
-    std::cout << "a:\n" << state.segment(6,3) << std::endl;
-    std::cout << "q:\n" << state.segment(9,4) << std::endl;
-    std::cout << "w:\n" << state.segment(13,3) << std::endl;
-    */
-    
+{    
     nav_msgs::Odometry msg;
-    msg.pose.pose.position.x = state[0];
-    msg.pose.pose.position.y = state[1];
-    msg.pose.pose.position.z = state[2];
+    msg.pose.pose.position.x = estState[0];
+    msg.pose.pose.position.y = estState[1];
+    msg.pose.pose.position.z = estState[2];
     
-    msg.pose.pose.orientation.w = state[9];
-    msg.pose.pose.orientation.x = state[10];
-    msg.pose.pose.orientation.y = state[11];
-    msg.pose.pose.orientation.z = state[12];
+    msg.twist.twist.linear.x = estState[3];
+    msg.twist.twist.linear.y = estState[4];
+    msg.twist.twist.linear.z = estState[5];
     
-    msg.twist.twist.linear.x = state[4];
-    msg.twist.twist.linear.y = state[5];
-    msg.twist.twist.linear.z = state[6];
+    msg.pose.pose.orientation.w = estState[6];
+    msg.pose.pose.orientation.x = estState[7];
+    msg.pose.pose.orientation.y = estState[8];
+    msg.pose.pose.orientation.z = estState[9];
     
-    msg.twist.twist.angular.x = state[13];
-    msg.twist.twist.angular.y = state[14];
-    msg.twist.twist.angular.z = state[15];
-    
-
     estStatePub.publish(msg);
 }
 
@@ -130,94 +121,114 @@ void WrEkfNode::pubCtrlState()
     msg.data.push_back(estState[1]);
     msg.data.push_back(estState[3]);
     msg.data.push_back(estState[4]);
-    Vector4 q = estState.segment(9, 4);
-    Vector3 eul = quat2Eul(q);
-    
+    Vector4 q = estState.segment(6, 4);
+    Vector3 eul = quatToEul(q);
     msg.data.push_back(eul[2]);
     //std::cout << eul << std::endl << std::endl;
     ctrlStatePub.publish(msg);
 }
 
+void WrEkfNode::pubTest()
+{
+        
+        wr_msgs::ninelives_triplet_stamped msg;
+        
+        msg.r_ecef_master.x = gnnsBasePosEnuMes[0];
+        msg.r_ecef_master.y = gnnsBasePosEnuMes[1];
+        msg.r_ecef_master.z = gnnsBasePosEnuMes[2];
+        
+        msg.v_ecef_master.x = gnnsBaseVelEnuMes[0];
+        msg.v_ecef_master.y = gnnsBaseVelEnuMes[1];
+        msg.v_ecef_master.z = gnnsBaseVelEnuMes[2];
+        
+        msg.dr_ecef_slave1.x = gnnsSlave1PosEnuMes[0];
+        msg.dr_ecef_slave1.y = gnnsSlave1PosEnuMes[1];
+        msg.dr_ecef_slave1.z = gnnsSlave1PosEnuMes[2];
+        
+        msg.dr_ecef_slave2.x = gnnsSlave2PosEnuMes[0];
+        msg.dr_ecef_slave2.y = gnnsSlave2PosEnuMes[1];
+        msg.dr_ecef_slave2.z = gnnsSlave2PosEnuMes[2];
+    
+        testMesTripletSub.publish(msg);
+        
+        Vector3 r = estState.segment(0,3);
+        Vector3 v = estState.segment(3,3);
+        Vector4 q = estState.segment(6,4);
+        Vector3 drSlave1;
+        Vector3 drSlave2;
+        Vector3 drImuGnns;
+        drSlave1 << 0.73, 0.23, 0.0;
+        drSlave2 << 0.73, -0.23, 0.0;
+        drImuGnns << -0.4, 0.0, 0.4;
+        
+        r = r + quatRotate(q, drImuGnns);
+        drSlave1 = quatRotate(q, drSlave1);
+        drSlave2 = quatRotate(q, drSlave2);
+        
+        msg.r_ecef_master.x = r[0];
+        msg.r_ecef_master.y = r[1];
+        msg.r_ecef_master.z = r[2];
+        
+        msg.v_ecef_master.x = v[0];
+        msg.v_ecef_master.y = v[1];
+        msg.v_ecef_master.z = v[2];
+        
+        msg.dr_ecef_slave1.x = drSlave1[0];
+        msg.dr_ecef_slave1.y = drSlave1[1];
+        msg.dr_ecef_slave1.z = drSlave1[2];
+        
+        msg.dr_ecef_slave2.x = drSlave2[0];
+        msg.dr_ecef_slave2.y = drSlave2[1];
+        msg.dr_ecef_slave2.z = drSlave2[2];
+    
+        testEstTripletSub.publish(msg);
+}
+
 void WrEkfNode::initPubs()
 {
     estStatePub = nodeHandle.advertise<nav_msgs::Odometry>(estStatePubTopicName, wrEkfQuenueDepth);
-    //ctrlStatePub = nodeHandle.advertise<std_msgs::Float32MultiArray>(ctrlStatePubTopicName, wrEkfQuenueDepth);
+    ctrlStatePub = nodeHandle.advertise<std_msgs::Float32MultiArray>(ctrlStatePubTopicName, wrEkfQuenueDepth);
+    
+    ctrlStatePub = nodeHandle.advertise<std_msgs::Float32MultiArray>(ctrlStatePubTopicName, wrEkfQuenueDepth);
+    
+    testMesTripletSub = nodeHandle.advertise<wr_msgs::ninelives_triplet_stamped>("wr_ekf_ros/test/mes_triplet", wrEkfQuenueDepth);
+    testEstTripletSub = nodeHandle.advertise<wr_msgs::ninelives_triplet_stamped>("wr_ekf_ros/test/est_triplet", wrEkfQuenueDepth);
 }
 
 void WrEkfNode::subscribe()
 {
     imuSub = nodeHandle.subscribe(imuTopicName, wrEkfQuenueDepth, &WrEkfNode::imuCb, this);
-    gnnsBasePosSub = nodeHandle.subscribe(gnnsBasePosTopicName, wrEkfQuenueDepth, &WrEkfNode::gnnsBasePosCb, this);
-    gnnsBaseVelSub = nodeHandle.subscribe(gnnsBaseVelTopicName, wrEkfQuenueDepth, &WrEkfNode::gnnsBaseVelCb, this);
-    gnnsLeftPosSub = nodeHandle.subscribe(gnnsLeftPosTopicName, wrEkfQuenueDepth, &WrEkfNode::gnnsLeftPosCb, this);
-    gnnsRightPosSub = nodeHandle.subscribe(gnnsRightPosTopicName, wrEkfQuenueDepth, &WrEkfNode::gnnsRightPosCb, this);
+    gnnsTripletSub = nodeHandle.subscribe(gnnsTripletTopicName, wrEkfQuenueDepth, &WrEkfNode::gnnsTripletCb, this);
 }
 
-void WrEkfNode::imuCb(const sensor_msgs::Imu& msg)
+void WrEkfNode::imuCb(const wr_msgs::imu_stamped& msg)
 {
-    imuAmes = Vector3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
-    imuWmes = Vector3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
+    imuAmes = Vector3(msg.acc.x, msg.acc.y, msg.acc.z);
+    imuWmes = Vector3(msg.ang_vel.x, msg.ang_vel.y, msg.ang_vel.z);
     imuReady = true;
 }
 
-void WrEkfNode::gnnsBasePosCb(const sensor_msgs::NavSatFix& msg)
+void WrEkfNode::gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg)
 {
-    double ne[2];
-    LLtoNE(msg.latitude, msg.longitude, ne);
     
-    if (!refWgsPointInited)
-    {
-        refWgsPoint = Vector3(ne[0], ne[1], msg.altitude);
-        refWgsPointInited = true;
-    }
+    /* read */
+    Vector3 poseBaseEcef(msg.r_ecef_master.x, msg.r_ecef_master.y, msg.r_ecef_master.z);
+    Vector3 velBaseEcef(msg.v_ecef_master.x, msg.v_ecef_master.y, msg.v_ecef_master.z);
+    Vector3 slave1Ecef(msg.dr_ecef_slave1.x, msg.dr_ecef_slave1.y, msg.dr_ecef_slave1.z);
+    Vector3 slave2Ecef(msg.dr_ecef_slave2.x, msg.dr_ecef_slave2.y, msg.dr_ecef_slave2.z);
+    statusBase = msg.status_master;
+    statusSlave1 = msg.status_slave1;
+    statusSlave2 = msg.status_slave2;
     
-    gnnsBasePosEnuMes << ne[0], ne[1], msg.altitude;
-    gnnsBasePosEnuMes -= refWgsPoint;
-    gnnsBasePosReady = true;
-    //std::cout << "base pos:\n" << gnnsBasePosEnuMes << std::endl;
-    //std::cout << "base pos:\n" << ne[0] << std::endl;
+    Vector3 drBase = poseBaseEcef - refEcefXYZ;
+    double e = 0, n = 0, u = 0;
+    geo.Ecef2Enu(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], drBase[0], drBase[1], drBase[2],  e, n, u);
+    gnnsBasePosEnuMes << e, n, u;
+    geo.Ecef2Enu(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], velBaseEcef[0], velBaseEcef[1], velBaseEcef[2],  e, n, u);
+    gnnsBaseVelEnuMes << e, n, u;
+    geo.Ecef2Enu(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], slave1Ecef[0], slave1Ecef[1], slave1Ecef[2],  e, n, u);
+    gnnsSlave1PosEnuMes << e, n, u;
+    geo.Ecef2Enu(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], slave2Ecef[0], slave2Ecef[1], slave2Ecef[2],  e, n, u);
+    gnnsSlave2PosEnuMes << e, n, u;
+    gnnsTripletReady = true;
 }
-
-void WrEkfNode::gnnsBaseVelCb(const geometry_msgs::Vector3Stamped& msg)
-{
-    if (refWgsPointInited)
-    {
-        Vector3 vEnu(-msg.vector.y, msg.vector.x, msg.vector.z); // ???
-        //gnnsBaseVelEnuMes = ecef2Enu(vEcef, refWgsPoint);
-        gnnsBaseVelEnuMes = vEnu;
-        
-        gnnsBaseVelReady = true;
-        //std::cout << "base vel:\n" << gnnsBaseVelEnuMes << std::endl;
-    }
-}
-
-void WrEkfNode::gnnsLeftPosCb(const sensor_msgs::NavSatFix& msg)
-{
-    if (refWgsPointInited)
-    {        
-        double ne[2];
-        LLtoNE(msg.latitude, msg.longitude, ne);
-        gnnsLeftPosEnuMes << ne[0], ne[1], msg.altitude;
-        gnnsLeftPosEnuMes -= refWgsPoint;
-        
-        gnnsLeftPosReady = true;
-        //std::cout << "left pos:\n" << gnnsLeftPosEnuMes << std::endl;
-        //std::cout << "left pos:\n" << ne[0] << std::endl;
-    }
-}
-
-void WrEkfNode::gnnsRightPosCb(const sensor_msgs::NavSatFix& msg)
-{
-    if (refWgsPointInited)
-    {        
-        double ne[2];
-        LLtoNE(msg.latitude, msg.longitude, ne);
-        gnnsRightPosEnuMes << ne[0], ne[1], msg.altitude;
-        gnnsRightPosEnuMes -= refWgsPoint;
-        
-        gnnsRightPosReady = true;
-        //std::cout << "right pos:\n" << gnnsRightPosEnuMes << std::endl;
-        //std::cout << "right pos:\n" << ne[0] << std::endl;
-    }
-}
-
