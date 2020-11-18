@@ -18,6 +18,7 @@
 #include "nav_msgs/Odometry.h"
 #include "wr_msgs/ninelives_triplet_stamped.h"
 #include "wr_msgs/imu_stamped.h"
+#include "ninelives_gnss_nodelet/ninelives_triplet_stamped.h"
 
 
 #include "Definitions.h"
@@ -37,13 +38,16 @@ private:
     void estimate();
     void pubEstState();
     void pubCtrlState();
-    void pubTest();
+    void pubTestM();
+    void pubTestE();
     
 private:
-    void imuCb(const wr_msgs::imu_stamped& msg);
+    //void imuCb(const wr_msgs::imu_stamped& msg);
+    void imuCb(const sensor_msgs::Imu& msg);
     bool imuReady;
     
-    void gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg);
+    //void gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg);
+    void gnnsTripletCb(const ninelives_gnss_nodelet::ninelives_triplet_stamped& msg);
     bool gnnsTripletReady;
     
 private:
@@ -80,11 +84,12 @@ private:
 private:
     mswhgeo::Geo geo;
     bool refGeoInited;
-    Vector3 refLatLonAlt;
-    Vector3 refEcefXYZ;
+    Vector3d refLatLonAlt;
+    Vector3d refEcefXYZ;
         
 private:
     EKF4 ekf;
+    bool ekfInited;
     std::chrono::high_resolution_clock::time_point predictionTimePoint;
     std::chrono::high_resolution_clock::time_point gnnsCorrectionTimePoint;
     Ekf4_fullState estState;

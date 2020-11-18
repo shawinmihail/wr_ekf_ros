@@ -3,11 +3,13 @@
 #include <cmath>
 
 WrEkfNode::WrEkfNode():
-     imuTopicName("kin_model/imu")
-    ,gnnsTripletTopicName("kin_model/gnns_triplet")
+     //imuTopicName("kin_model/imu")
+     imuTopicName("/icm20608")
+    //,gnnsTripletTopicName("kin_model/gnns_triplet")
+    ,gnnsTripletTopicName("/gnss_base/nl_triplet")
     ,estStatePubTopicName("/wr_ekf/est_state")
     ,ctrlStatePubTopicName("/wr_ekf/ctrl_state")
-    ,wrEkfNodeRate(100)
+    ,wrEkfNodeRate(99)
     ,wrEkfQuenueDepth(1)
     ,predictionTimePoint(std::chrono::high_resolution_clock::now())
     ,gnnsCorrectionTimePoint(std::chrono::high_resolution_clock::now())
@@ -20,14 +22,16 @@ WrEkfNode::WrEkfNode():
     
     ,geo(mswhgeo_constants::WGS84)
     ,refGeoInited(false)
+    
+    ,ekfInited(false)
 {
     /* init ref */
     if (!refGeoInited)
     {
-        refLatLonAlt = Vector3(55.751244 * 3.1415 / 180.0, 37.618423 * 3.1415 / 180.0, 200);
+        refLatLonAlt = Vector3d(55.751244 * 3.1415 / 180.0, 37.618423 * 3.1415 / 180.0, 200);
         double x = 0, y = 0, z = 0;
         geo.Wgs2Ecef(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], x, y, z);
-        refEcefXYZ = Vector3(x,y,z);
+        refEcefXYZ = Vector3d(x,y,z);
         refGeoInited = true;    
     }
 }
@@ -40,8 +44,8 @@ void WrEkfNode::run()
     while(ros::ok)
     {
         estimate();
-        pubEstState();
-        pubCtrlState();
+        //pubEstState();
+        //pubCtrlState();
         ros::spinOnce();
         wrEkfNodeRate.sleep();
     }
@@ -65,6 +69,14 @@ void WrEkfNode::estimate()
     /* gnns corrections */
     if (gnnsTripletReady)
     {
+        gnnsTripletReady = false;
+        if(!ekfInited)
+        {
+            ekf.reset(gnnsBasePosEnuMes);
+            ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
+            ekfInited = true;
+        }
+        
         // rv
         if (statusBase == 4)
         {
@@ -80,13 +92,14 @@ void WrEkfNode::estimate()
         // q
         if (statusSlave1 == 4 & statusSlave2 == 4)
         {
-        ekf.correctQ2(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
-        gnnsTripletReady = false;
+            ekf.correctQ2(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
         }
+        
+        pubTestM();
     }
     
     estState = ekf.getEstState();
-    pubTest();
+    pubTestE();
     
     /*
     std::cout << "r_e:\n" << estState.segment(0,3) << std::endl;
@@ -128,11 +141,12 @@ void WrEkfNode::pubCtrlState()
     ctrlStatePub.publish(msg);
 }
 
-void WrEkfNode::pubTest()
+void WrEkfNode::pubTestM()
 {
         
         wr_msgs::ninelives_triplet_stamped msg;
         
+        msg.stamp = ros::Time::now();
         msg.r_ecef_master.x = gnnsBasePosEnuMes[0];
         msg.r_ecef_master.y = gnnsBasePosEnuMes[1];
         msg.r_ecef_master.z = gnnsBasePosEnuMes[2];
@@ -150,6 +164,11 @@ void WrEkfNode::pubTest()
         msg.dr_ecef_slave2.z = gnnsSlave2PosEnuMes[2];
     
         testMesTripletSub.publish(msg);
+}
+
+void WrEkfNode::pubTestE()
+{
+        wr_msgs::ninelives_triplet_stamped msg;
         
         Vector3 r = estState.segment(0,3);
         Vector3 v = estState.segment(3,3);
@@ -165,6 +184,7 @@ void WrEkfNode::pubTest()
         drSlave1 = quatRotate(q, drSlave1);
         drSlave2 = quatRotate(q, drSlave2);
         
+        msg.stamp = ros::Time::now();
         msg.r_ecef_master.x = r[0];
         msg.r_ecef_master.y = r[1];
         msg.r_ecef_master.z = r[2];
@@ -201,18 +221,29 @@ void WrEkfNode::subscribe()
     gnnsTripletSub = nodeHandle.subscribe(gnnsTripletTopicName, wrEkfQuenueDepth, &WrEkfNode::gnnsTripletCb, this);
 }
 
+/*
 void WrEkfNode::imuCb(const wr_msgs::imu_stamped& msg)
 {
     imuAmes = Vector3(msg.acc.x, msg.acc.y, msg.acc.z);
     imuWmes = Vector3(msg.ang_vel.x, msg.ang_vel.y, msg.ang_vel.z);
     imuReady = true;
 }
+*/
 
-void WrEkfNode::gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg)
+void WrEkfNode::imuCb(const sensor_msgs::Imu& msg)
 {
+    imuAmes = Vector3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
+    imuWmes = Vector3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
+    imuReady = true;
+    //std::cout << "imu_cb" << std::endl;
+}
+
+void WrEkfNode::gnnsTripletCb(const ninelives_gnss_nodelet::ninelives_triplet_stamped& msg)
+{
+    //std::cout << "triplet_cb" << std::endl;
     
     /* read */
-    Vector3 poseBaseEcef(msg.r_ecef_master.x, msg.r_ecef_master.y, msg.r_ecef_master.z);
+    Vector3d poseBaseEcef(msg.r_ecef_master.x, msg.r_ecef_master.y, msg.r_ecef_master.z);
     Vector3 velBaseEcef(msg.v_ecef_master.x, msg.v_ecef_master.y, msg.v_ecef_master.z);
     Vector3 slave1Ecef(msg.dr_ecef_slave1.x, msg.dr_ecef_slave1.y, msg.dr_ecef_slave1.z);
     Vector3 slave2Ecef(msg.dr_ecef_slave2.x, msg.dr_ecef_slave2.y, msg.dr_ecef_slave2.z);
@@ -220,9 +251,12 @@ void WrEkfNode::gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg)
     statusSlave1 = msg.status_slave1;
     statusSlave2 = msg.status_slave2;
     
-    Vector3 drBase = poseBaseEcef - refEcefXYZ;
+    Vector3d drBase = poseBaseEcef - refEcefXYZ;
     double e = 0, n = 0, u = 0;
     geo.Ecef2Enu(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], drBase[0], drBase[1], drBase[2],  e, n, u);
+    
+    //std::cout << "dp: " << gnnsBasePosEnuMes - Vector3(e,n,u) << std::endl;
+    
     gnnsBasePosEnuMes << e, n, u;
     geo.Ecef2Enu(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], velBaseEcef[0], velBaseEcef[1], velBaseEcef[2],  e, n, u);
     gnnsBaseVelEnuMes << e, n, u;
@@ -230,5 +264,6 @@ void WrEkfNode::gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg)
     gnnsSlave1PosEnuMes << e, n, u;
     geo.Ecef2Enu(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], slave2Ecef[0], slave2Ecef[1], slave2Ecef[2],  e, n, u);
     gnnsSlave2PosEnuMes << e, n, u;
+    
     gnnsTripletReady = true;
 }
