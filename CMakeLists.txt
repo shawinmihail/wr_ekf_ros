@@ -4,7 +4,7 @@ project(wr_ekf_ros)
 add_definitions(-std=c++11)
 
 find_package(
-    catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs
+    catkin REQUIRED COMPONENTS roscpp std_msgs sensor_msgs nav_msgs wr_msgs
 )
 
 # https://eigen.tuxfamily.org/dox/TopicCMakeGuide.html

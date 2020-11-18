@@ -9,7 +9,6 @@
 
 #include "ros/ros.h"
 
-#include "sensor_msgs/Imu.h"
 #include "sensor_msgs/NavSatFix.h"
 #include "geometry_msgs/Vector3Stamped.h"
 #include "geometry_msgs/PoseStamped.h"
@@ -18,7 +17,6 @@
 #include "nav_msgs/Odometry.h"
 #include "wr_msgs/ninelives_triplet_stamped.h"
 #include "wr_msgs/imu_stamped.h"
-#include "ninelives_gnss_nodelet/ninelives_triplet_stamped.h"
 
 
 #include "Definitions.h"
@@ -42,12 +40,10 @@ private:
     void pubTestE();
     
 private:
-    //void imuCb(const wr_msgs::imu_stamped& msg);
-    void imuCb(const sensor_msgs::Imu& msg);
+    void imuCb(const wr_msgs::imu_stamped& msg);
     bool imuReady;
     
-    //void gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg);
-    void gnnsTripletCb(const ninelives_gnss_nodelet::ninelives_triplet_stamped& msg);
+    void gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg);
     bool gnnsTripletReady;
     
 private:

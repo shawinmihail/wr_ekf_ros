@@ -1,5 +1,4 @@
 #include "WrEkfNode.h"
-
 #include <cmath>
 
 WrEkfNode::WrEkfNode():
@@ -221,24 +220,15 @@ void WrEkfNode::subscribe()
     gnnsTripletSub = nodeHandle.subscribe(gnnsTripletTopicName, wrEkfQuenueDepth, &WrEkfNode::gnnsTripletCb, this);
 }
 
-/*
+
 void WrEkfNode::imuCb(const wr_msgs::imu_stamped& msg)
 {
     imuAmes = Vector3(msg.acc.x, msg.acc.y, msg.acc.z);
     imuWmes = Vector3(msg.ang_vel.x, msg.ang_vel.y, msg.ang_vel.z);
     imuReady = true;
 }
-*/
 
-void WrEkfNode::imuCb(const sensor_msgs::Imu& msg)
-{
-    imuAmes = Vector3(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
-    imuWmes = Vector3(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
-    imuReady = true;
-    //std::cout << "imu_cb" << std::endl;
-}
-
-void WrEkfNode::gnnsTripletCb(const ninelives_gnss_nodelet::ninelives_triplet_stamped& msg)
+void WrEkfNode::gnnsTripletCb(const wr_msgs::ninelives_triplet_stamped& msg)
 {
     //std::cout << "triplet_cb" << std::endl;
     
