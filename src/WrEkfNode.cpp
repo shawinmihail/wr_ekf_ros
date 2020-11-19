@@ -2,13 +2,11 @@
 #include <cmath>
 
 WrEkfNode::WrEkfNode():
-     //imuTopicName("kin_model/imu")
-     imuTopicName("/icm20608")
-    //,gnnsTripletTopicName("kin_model/gnns_triplet")
-    ,gnnsTripletTopicName("/gnss_base/nl_triplet")
+     imuTopicName("wr_sensors/imu")
+    ,gnnsTripletTopicName("/wr_sensors/nl_triplet")
     ,estStatePubTopicName("/wr_ekf/est_state")
     ,ctrlStatePubTopicName("/wr_ekf/ctrl_state")
-    ,wrEkfNodeRate(99)
+    ,wrEkfNodeRate(100)
     ,wrEkfQuenueDepth(1)
     ,predictionTimePoint(std::chrono::high_resolution_clock::now())
     ,gnnsCorrectionTimePoint(std::chrono::high_resolution_clock::now())
