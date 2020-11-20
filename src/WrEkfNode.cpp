@@ -29,7 +29,7 @@ WrEkfNode::WrEkfNode():
         double x = 0, y = 0, z = 0;
         geo.Wgs2Ecef(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], x, y, z);
         refEcefXYZ = Vector3d(x,y,z);
-        refGeoInited = true;    
+        refGeoInited = true;
     }
 }
 
@@ -67,15 +67,15 @@ void WrEkfNode::estimate()
     if (gnnsTripletReady)
     {
         gnnsTripletReady = false;
-        
+
         if(!ekfInited)
         {
-            if (!statusBase == 4 || !StatusSlave1 == 4 || !StatusSlave1 == 4)
+            if (!statusBase == 4 || !statusSlave1 == 4 || !statusSlave2 == 4)
             {
                 return;
             }
             ekf.reset(gnnsBasePosEnuMes);
-            vector4 qImuCalib(1.0f/sqrtf(2.0f), 0.f, 0.f, 1.0f/sqrtf(2.0f));
+            Vector4 qImuCalib(1.0f/sqrtf(2.0f), 0.f, 0.f, 1.0f/sqrtf(2.0f));
             ekf.setQImuCalib(qImuCalib);
             ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
             ekfInited = true;
