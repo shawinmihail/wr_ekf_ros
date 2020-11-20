@@ -3,6 +3,8 @@
 !src/
 !include/
 !wr_c_ekf/
+!launch/
+!config/
 !package.xml
 !CMakeLists.txt
 !.gitignore
