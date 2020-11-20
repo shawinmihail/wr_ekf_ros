@@ -29,6 +29,7 @@ public:
     WrEkfNode();
     void run();
     void stop();
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
     
 private:
     void subscribe();
