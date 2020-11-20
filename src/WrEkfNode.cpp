@@ -67,9 +67,16 @@ void WrEkfNode::estimate()
     if (gnnsTripletReady)
     {
         gnnsTripletReady = false;
+        
         if(!ekfInited)
         {
+            if (!statusBase == 4 || !StatusSlave1 == 4 || !StatusSlave1 == 4)
+            {
+                return;
+            }
             ekf.reset(gnnsBasePosEnuMes);
+            vector4 qImuCalib(1.0f/sqrtf(2.0f), 0.f, 0.f, 1.0f/sqrtf(2.0f));
+            ekf.setQImuCalib(qImuCalib);
             ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
             ekfInited = true;
         }
@@ -87,7 +94,7 @@ void WrEkfNode::estimate()
         //}
         
         // q
-        if (statusSlave1 == 4 & statusSlave2 == 4)
+        if (statusSlave1 == 4 && statusSlave2 == 4)
         {
             ekf.correctQ2(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
         }
