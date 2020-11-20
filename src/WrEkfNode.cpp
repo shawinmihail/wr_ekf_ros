@@ -95,7 +95,7 @@ void WrEkfNode::estimate()
         pubTestM();
     }
     
-    estState = ekf.getEstState();
+    estState = ekf.getEstTargetState();
     pubTestE();
     
     /*
