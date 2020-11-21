@@ -118,6 +118,7 @@ void WrEkfNode::estimate()
     }
     
     estState = ekf.getEstState();
+    estTargetState = ekf.getEstTargetState();
     pubTestE();
     
     /*
@@ -130,18 +131,18 @@ void WrEkfNode::estimate()
 void WrEkfNode::pubEstState()
 {    
     nav_msgs::Odometry msg;
-    msg.pose.pose.position.x = estState[0];
-    msg.pose.pose.position.y = estState[1];
-    msg.pose.pose.position.z = estState[2];
+    msg.pose.pose.position.x = estTargetState[0];
+    msg.pose.pose.position.y = estTargetState[1];
+    msg.pose.pose.position.z = estTargetState[2];
     
-    msg.twist.twist.linear.x = estState[3];
-    msg.twist.twist.linear.y = estState[4];
-    msg.twist.twist.linear.z = estState[5];
+    msg.twist.twist.linear.x = estTargetState[3];
+    msg.twist.twist.linear.y = estTargetState[4];
+    msg.twist.twist.linear.z = estTargetState[5];
     
-    msg.pose.pose.orientation.w = estState[6];
-    msg.pose.pose.orientation.x = estState[7];
-    msg.pose.pose.orientation.y = estState[8];
-    msg.pose.pose.orientation.z = estState[9];
+    msg.pose.pose.orientation.w = estTargetState[6];
+    msg.pose.pose.orientation.x = estTargetState[7];
+    msg.pose.pose.orientation.y = estTargetState[8];
+    msg.pose.pose.orientation.z = estTargetState[9];
     
     estStatePub.publish(msg);
 }
@@ -149,11 +150,11 @@ void WrEkfNode::pubEstState()
 void WrEkfNode::pubCtrlState()
 {
     std_msgs::Float32MultiArray msg;
-    msg.data.push_back(estState[0]);
-    msg.data.push_back(estState[1]);
-    msg.data.push_back(estState[3]);
-    msg.data.push_back(estState[4]);
-    Vector4 q = estState.segment(6, 4);
+    msg.data.push_back(estTargetState[0]);
+    msg.data.push_back(estTargetState[1]);
+    msg.data.push_back(estTargetState[3]);
+    msg.data.push_back(estTargetState[4]);
+    Vector4 q = estTargetState.segment(6, 4);
     Vector3 eul = quatToEul(q);
     msg.data.push_back(eul[2]);
     //std::cout << eul << std::endl << std::endl;
@@ -195,9 +196,9 @@ void WrEkfNode::pubTestE()
         Vector3 drSlave1;
         Vector3 drSlave2;
         Vector3 drImuGnns;
-        drSlave1 << 0.73, 0.23, 0.0;
-        drSlave2 << 0.73, -0.23, 0.0;
-        drImuGnns << -0.4, 0.0, 0.4;
+        drSlave1 << ekf.getDrSlave1();
+        drSlave2 << ekf.getDrSlave2();
+        drImuGnns << -0.28, 0.0, 0.1;
         
         r = r + quatRotate(q, drImuGnns);
         drSlave1 = quatRotate(q, drSlave1);

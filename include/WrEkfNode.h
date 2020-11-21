@@ -90,4 +90,5 @@ private:
     std::chrono::high_resolution_clock::time_point predictionTimePoint;
     std::chrono::high_resolution_clock::time_point gnnsCorrectionTimePoint;
     Ekf4_fullState estState;
+    Ekf4_fullState estTargetState;
 };
