@@ -55,45 +55,51 @@ void WrEkfNode::run()
 
 void WrEkfNode::estimate()
 {
+    
     /* time */
     uint64_t dtMs =  std::chrono::duration_cast<std::chrono::milliseconds>
     (std::chrono::high_resolution_clock::now() - predictionTimePoint).count();
     predictionTimePoint = std::chrono::high_resolution_clock::now();
     double dt = dtMs / 1e3f;
     
-    if (ekfInited)
+    /* init */
+    if(!ekfInited)
     {
-        ekf.predict(dt);
+        if (gnnsTripletReady && imuReady && statusBase > 0 && statusSlave1 == 4 & statusSlave2 == 4)
+        {
+            gnnsTripletReady = false;
+            imuReady = false;
+    
+            ekf.reset(gnnsBasePosEnuMes);
+            ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
+            Vector4 qImuCalib(1.0f/sqrtf(2.0f), 0.f, 0.f, 1.0f/sqrtf(2.0f));
+            ekf.setBiasesImuCalib(Vector3::Zero(), imuWmes);
+            ekf.setQImuCalib(qImuCalib);
+            ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
+            ekfInited = true;
+            ROS_INFO("ekf inited");
+        }
+        else
+        {
+            ROS_INFO_THROTTLE(3, "ekf initialization...");
+            return;
+        }   
     }
     
+
+    ekf.predict(dt);
+
     if (imuReady)
     {
         ekf.setImu(imuAmes, imuWmes);
         imuReady = false;
     }
-
+    
     /* gnns corrections */
     if (gnnsTripletReady)
     {
         gnnsTripletReady = false;
-        if(!ekfInited)
-        {   if (statusBase > 0 && statusSlave1 == 4 & statusSlave2 == 4)
-            {
-                ekf.reset(gnnsBasePosEnuMes);
-                ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
-                Vector4 qImuCalib(1.0f/sqrtf(2.0f), 0.f, 0.f, 1.0f/sqrtf(2.0f));
-                ekf.setQImuCalib(qImuCalib);
-                ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
-                ekfInited = true;
-                ROS_INFO("ekf inited");
-            }
-            else
-            {
-                ROS_INFO_THROTTLE(3, "ekf initialization...");
-            }
-		return;
-        }
-
+       
         // rv
         if (statusBase > 0)
         {
