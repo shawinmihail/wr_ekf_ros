@@ -25,11 +25,16 @@ WrEkfNode::WrEkfNode():
     /* init ref */
     if (!refGeoInited)
     {
-        refLatLonAlt = Vector3d(55.751244 * 3.1415 / 180.0, 37.618423 * 3.1415 / 180.0, 200);
+	double PI = 3.1415926535898;
+        refLatLonAlt = Vector3d(55.944663 * PI / 180.0, 38.141938 * PI / 180.0, 200.0);
         double x = 0, y = 0, z = 0;
         geo.Wgs2Ecef(refLatLonAlt[0], refLatLonAlt[1], refLatLonAlt[2], x, y, z);
         refEcefXYZ = Vector3d(x,y,z);
         refGeoInited = true;
+
+        ROS_INFO_STREAM("ref LLA: " << refLatLonAlt.transpose());
+        ROS_INFO_STREAM("ref XYZ: " << refEcefXYZ.transpose());
+
     }
 }
 
@@ -41,8 +46,8 @@ void WrEkfNode::run()
     while(ros::ok)
     {
         estimate();
-        //pubEstState();
-        //pubCtrlState();
+        pubEstState();
+        pubCtrlState();
         ros::spinOnce();
         wrEkfNodeRate.sleep();
     }
@@ -72,7 +77,7 @@ void WrEkfNode::estimate()
     {
         gnnsTripletReady = false;
         if(!ekfInited)
-        {   if (statusBase == 4 && statusSlave1 == 4 & statusSlave2 == 4)
+        {   if (statusBase > 0 && statusSlave1 == 4 & statusSlave2 == 4)
             {
                 ekf.reset(gnnsBasePosEnuMes);
                 ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
@@ -86,10 +91,11 @@ void WrEkfNode::estimate()
             {
                 ROS_INFO_THROTTLE(3, "ekf initialization...");
             }
+		return;
         }
-        
+
         // rv
-        if (statusBase == 4)
+        if (statusBase > 0)
         {
             ekf.correctRV(gnnsBasePosEnuMes, gnnsBaseVelEnuMes);
         }
