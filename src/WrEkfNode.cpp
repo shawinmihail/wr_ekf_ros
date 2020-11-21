@@ -56,7 +56,11 @@ void WrEkfNode::estimate()
     predictionTimePoint = std::chrono::high_resolution_clock::now();
     double dt = dtMs / 1e3f;
     
-    ekf.predict(dt);
+    if (ekfInited)
+    {
+        ekf.predict(dt);
+    }
+    
     if (imuReady)
     {
         ekf.setImu(imuAmes, imuWmes);
@@ -67,24 +71,31 @@ void WrEkfNode::estimate()
     if (gnnsTripletReady)
     {
         gnnsTripletReady = false;
-
         if(!ekfInited)
-        {
-            if (!statusBase == 4 || !statusSlave1 == 4 || !statusSlave2 == 4)
+        {   if (statusBase == 4 && statusSlave1 == 4 & statusSlave2 == 4)
             {
-                return;
+                ekf.reset(gnnsBasePosEnuMes);
+                ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
+                Vector4 qImuCalib(1.0f/sqrtf(2.0f), 0.f, 0.f, 1.0f/sqrtf(2.0f));
+                ekf.setQImuCalib(qImuCalib);
+                ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
+                ekfInited = true;
+                ROS_INFO("ekf inited");
             }
-            ekf.reset(gnnsBasePosEnuMes);
-            Vector4 qImuCalib(1.0f/sqrtf(2.0f), 0.f, 0.f, 1.0f/sqrtf(2.0f));
-            ekf.setQImuCalib(qImuCalib);
-            ekf.calibSlavesWithSample(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
-            ekfInited = true;
+            else
+            {
+                ROS_INFO_THROTTLE(3, "ekf initialization...");
+            }
         }
         
         // rv
         if (statusBase == 4)
         {
             ekf.correctRV(gnnsBasePosEnuMes, gnnsBaseVelEnuMes);
+        }
+        else
+        {
+            ROS_INFO("base low status");
         }
         
         //if (statusBase == 4)
@@ -98,11 +109,15 @@ void WrEkfNode::estimate()
         {
             ekf.correctQ2(gnnsSlave1PosEnuMes, gnnsSlave2PosEnuMes);
         }
+        else
+        {
+            ROS_INFO("slaves low status");
+        }
         
         pubTestM();
     }
     
-    estState = ekf.getEstTargetState();
+    estState = ekf.getEstState();
     pubTestE();
     
     /*
